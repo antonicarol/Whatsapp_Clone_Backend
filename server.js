@@ -20,13 +20,12 @@ const pusher = new Pusher({
 
 //MIDDLEWARE
 app.use(express.json());
-app.use(cors());
 
-/* app.use((req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Acces-Control-Allow-Headers", "*");
   next();
-}); */
+});
 
 //DB CONFIG
 const connectionUrl =
