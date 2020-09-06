@@ -22,9 +22,9 @@ const pusher = new Pusher({
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Acces-Control-Allow-Headers", "*");
-  next();
+  res.setHeader("Access-Control-Allow-Origin", "*"),
+    res.setHeader("Access-Control-Allow-Headers", "*"),
+    next();
 });
 
 //DB CONFIG
