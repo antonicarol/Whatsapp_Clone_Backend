@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import Messages from "./models/dbMessages.js";
 import Rooms from "./models/dbRooms.js";
+import Users from "./models/dbUsers.js";
 import Pusher from "pusher";
 import cors from "cors";
 
@@ -110,6 +111,21 @@ app.get("/rooms/sync", (req, res) => {
   });
 });
 
+//ROOMS that the user is in!
+
+app.get("/rooms/:user", (req, res) => {
+  const user = req.params;
+  console.log(user);
+
+  Rooms.find({ users: user.user }).exec((err, data) => {
+    if (err) {
+      res.status(500).send(err);
+    } else {
+      res.status(200).send(data);
+    }
+  });
+});
+
 //POST A MESSAGe
 app.post("/api/v1/messages/new", (req, res) => {
   const dbMessage = req.body;
@@ -133,6 +149,25 @@ app.post("/rooms/new", (req, res) => {
       res.status(201).send(`new room create: \n ${data}`);
     }
   });
+});
+// We wil do it with no encryption, its just a demo
+app.post("/users/new", (req, res) => {
+  const user = req.body;
+  const _user = Users.findOne({ user: user.name }, (err, data) => {
+    return data;
+  });
+  console.log(_user);
+  if (_user == null) {
+    Users.create(user, (err, data) => {
+      if (err) {
+        res.send(500).send(err);
+      } else {
+        res.status(201).send(`User Registered : \n ${data}`);
+      }
+    });
+  } else {
+    res.send(201).send(`User already created!`);
+  }
 });
 
 //LISTEN
