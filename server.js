@@ -22,10 +22,13 @@ const pusher = new Pusher({
 //MIDDLEWARE
 app.use(express.json());
 
+app.use(express.static("public"));
+
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*"),
     res.setHeader("Access-Control-Allow-Headers", "*"),
-    next();
+    res.setHeader("Access-Control-Allow-Methods", "*");
+  next();
 });
 
 //DB CONFIG
@@ -35,6 +38,7 @@ mongoose.connect(connectionUrl, {
   useCreateIndex: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  useFindAndModify: false,
 });
 
 const db = mongoose.connection;
@@ -50,7 +54,11 @@ db.once("open", () => {
       const roomDetails = change.fullDocument;
       pusher.trigger("rooms", "inserted", {
         name: roomDetails.name,
-        user: roomDetails.users,
+        users: roomDetails.users,
+      });
+    } else if (change.operationType === "update") {
+      Rooms.find({ _id: change.documentKey._id }, (err, data) => {
+        pusher.trigger("rooms", "updated", data);
       });
     } else {
       console.log("Error Trigerring pusher");
@@ -89,7 +97,6 @@ app.get("/", (req, res) =>
 
 app.get("/messages/sync/:roomID", (req, res) => {
   const roomID = req.params;
-  console.log(roomID);
   Messages.find()
     .where({ roomId: roomID.roomID })
     .exec((err, data) => {
@@ -113,11 +120,32 @@ app.get("/rooms/sync", (req, res) => {
 
 //ROOMS that the user is in!
 
-app.get("/rooms/:user", (req, res) => {
-  const user = req.params;
-  console.log(user);
+app.get("/rooms/*", (req, res) => {
+  console.log("GET ROOMS");
+  const name = req.query["user"];
+  const url = decodeURIComponent(req.query["imgUrl"]);
 
-  Rooms.find({ users: user.user }).exec((err, data) => {
+  console.log(name);
+  console.log(url);
+
+  const filter = {
+    users: { $elemMatch: { user: name, photo: url } },
+  };
+
+  Rooms.find(filter).exec((err, data) => {
+    if (err) {
+      res.status(500).send(err);
+    } else {
+      console.log(data);
+      res.status(200).send(data);
+    }
+  });
+});
+
+// GET ALL USERS
+
+app.get("/users/all", (req, res) => {
+  Users.find((err, data) => {
     if (err) {
       res.status(500).send(err);
     } else {
@@ -153,21 +181,34 @@ app.post("/rooms/new", (req, res) => {
 // We wil do it with no encryption, its just a demo
 app.post("/users/new", (req, res) => {
   const user = req.body;
-  const _user = Users.findOne({ user: user.name }, (err, data) => {
-    return data;
+  console.log(user);
+  Users.findOne({ name: user.name }, (err, data) => {
+    if (data) {
+      res.status(202).send(`User already created!`);
+    } else {
+      Users.create(user, (err, data) => {
+        if (err) {
+          res.staus(500).send(err);
+        } else {
+          res.status(201).send(`User Registered : \n ${data}`);
+        }
+      });
+    }
   });
-  console.log(_user);
-  if (_user == null) {
-    Users.create(user, (err, data) => {
-      if (err) {
-        res.send(500).send(err);
-      } else {
-        res.status(201).send(`User Registered : \n ${data}`);
-      }
-    });
-  } else {
-    res.send(201).send(`User already created!`);
-  }
+});
+
+app.put("/rooms/invite/*", (req, res) => {
+  const name = req.params[0];
+  const url = req.params[1];
+  console.log(url);
+
+  /* const update = { $push: { users: req.body.username } };
+
+  Rooms.findOneAndUpdate(filter, update).exec((err, data) => {
+    data.save();
+    res.send(data);
+  }); */
+  res.send(url);
 });
 
 //LISTEN
